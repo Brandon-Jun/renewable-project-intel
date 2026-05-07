@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export const config = { maxDuration: 60 };
 
@@ -15,21 +15,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '필수 입력값이 없습니다 (프로젝트명, 국가, 사업유형)' });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.' });
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(500).json({ error: 'GEMINI_API_KEY 환경변수가 설정되지 않았습니다.' });
   }
 
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    defaultHeaders: { 'anthropic-beta': 'web-search-2025-03-05' },
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    tools: [{ googleSearch: {} }],
   });
 
-  const systemPrompt = `You are a senior renewable energy project intelligence analyst specializing in global energy markets.
-Search for comprehensive, accurate information about the specified energy project.
-IMPORTANT: Always respond with ONLY valid JSON. No markdown, no explanation text, just the raw JSON object.
-Use null for unavailable fields. Never make up financial figures—mark as null if uncertain.`;
-
-  const userPrompt = `Search for detailed information about this renewable energy project and return a structured JSON report.
+  const prompt = `You are a senior renewable energy project intelligence analyst.
+Search for detailed information about this renewable energy project and return a structured JSON report.
 
 Project Name: ${projectName}
 Country: ${country}
@@ -37,7 +34,10 @@ Business Type: ${businessType}
 ${participants ? `Known Participants: ${participants}` : ''}
 ${capacity ? `Stated Capacity: ${capacity}` : ''}
 
-Search for and return ONLY this JSON structure (no other text):
+IMPORTANT: Respond with ONLY valid JSON. No markdown, no explanation text, just the raw JSON object.
+Use null for unavailable fields. Never make up financial figures—mark as null if uncertain.
+
+Return ONLY this JSON structure:
 {
   "projectName": "official project name",
   "alternativeNames": [],
@@ -113,44 +113,10 @@ Rules:
 - Return raw JSON only`;
 
   try {
-    const messages = [{ role: 'user', content: userPrompt }];
-    let finalText = '';
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
-    for (let i = 0; i < 8; i++) {
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        system: systemPrompt,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages,
-      });
-
-      const textBlocks = response.content.filter(b => b.type === 'text');
-      const toolUseBlocks = response.content.filter(b => b.type === 'tool_use');
-
-      if (textBlocks.length > 0) {
-        finalText = textBlocks.map(b => b.text).join('');
-      }
-
-      if (response.stop_reason === 'end_turn') break;
-
-      if (response.stop_reason === 'tool_use' && toolUseBlocks.length > 0) {
-        messages.push({ role: 'assistant', content: response.content });
-        messages.push({
-          role: 'user',
-          content: toolUseBlocks.map(b => ({
-            type: 'tool_result',
-            tool_use_id: b.id,
-            content: 'Search results retrieved. Please synthesize and return the JSON report.',
-          })),
-        });
-      } else {
-        break;
-      }
-    }
-
-    // Strip markdown code fences if present
-    const stripped = finalText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
+    const stripped = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '');
     const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON 파싱 실패: AI 응답에서 JSON을 찾을 수 없습니다.');
 
