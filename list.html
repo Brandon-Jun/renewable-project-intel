@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>프로젝트 목록 | Energy Intel</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <script src="projects.js"></script>
+  <script src="initial-projects.js"></script>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">Energy<strong>Intel</strong></span>
+    </a>
+    <nav class="header-nav">
+      <a href="list.html" class="nav-link nav-active">프로젝트 목록</a>
+      <a href="index.html" class="nav-link">새 검색</a>
+    </nav>
+    <a href="index.html" class="btn-header-new">+ 새 프로젝트 검색</a>
+  </div>
+</header>
+
+<!-- ── WARNING MODAL ───────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="updateModal">
+  <div class="modal-card">
+    <div class="modal-icon">⚠️</div>
+    <h3 class="modal-title">데이터 업데이트 경고</h3>
+    <p class="modal-desc">Claude AI가 최신 글로벌 재생에너지 프로젝트를 웹에서 검색합니다.</p>
+    <ul class="modal-list">
+      <li>⏱️ 완료까지 <strong>1~3분</strong> 소요될 수 있습니다</li>
+      <li>💰 Anthropic API 비용이 발생합니다</li>
+      <li>🔄 업데이트 중 페이지를 이탈하지 마세요</li>
+      <li>💾 결과는 브라우저에 로컬 저장됩니다</li>
+    </ul>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-modal-confirm" id="btnStartUpdate" onclick="startUpdate()">업데이트 시작</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── UPDATE LOADING OVERLAY ─────────────────────────────────── -->
+<div class="modal-overlay hidden" id="updateLoadingOverlay">
+  <div class="modal-card">
+    <div class="spinner" style="margin:0 auto 20px;"></div>
+    <h3 class="modal-title">데이터 업데이트 중…</h3>
+    <p class="modal-desc">AI가 글로벌 재생에너지 프로젝트를 검색하고 있습니다.</p>
+    <p style="font-size:13px;color:var(--gray-400);margin-top:12px;">최대 3분 소요될 수 있습니다. 잠시만 기다려주세요.</p>
+  </div>
+</div>
+
+<!-- ── LIST PAGE ───────────────────────────────────────────────── -->
+<div class="list-page">
+
+  <!-- TOOLBAR -->
+  <div class="list-toolbar">
+    <div class="toolbar-top">
+      <div>
+        <h1 class="list-title">글로벌 프로젝트 목록</h1>
+        <p class="list-subtitle" id="listSubtitle"></p>
+      </div>
+      <div class="toolbar-actions">
+        <button class="btn-update-data" id="btnUpdateData" onclick="openModal()">
+          🔄 데이터 업데이트
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-search-wrap">
+      <span class="toolbar-search-icon">🔍</span>
+      <input
+        type="text" id="listSearch"
+        class="list-search-input"
+        placeholder="프로젝트명, 국가, 사업유형, 참여사로 검색…"
+        autocomplete="off"
+      />
+      <button class="clear-search-btn hidden" id="clearSearch" title="지우기">✕</button>
+    </div>
+
+    <div class="toolbar-filters">
+      <div class="filter-group">
+        <span class="filter-label">사업유형</span>
+        <div class="chips" id="typeChips">
+          <button class="chip chip-active" data-filter-type="">전체</button>
+          <button class="chip" data-filter-type="Offshore Wind">해상풍력</button>
+          <button class="chip" data-filter-type="Onshore Wind">육상풍력</button>
+          <button class="chip" data-filter-type="Solar PV">태양광</button>
+          <button class="chip" data-filter-type="BESS">ESS</button>
+          <button class="chip" data-filter-type="Hydro">수력</button>
+          <button class="chip" data-filter-type="Hybrid (Solar+BESS)">복합</button>
+        </div>
+      </div>
+      <div class="filter-group" style="margin-left:auto">
+        <span class="filter-label">표시</span>
+        <select id="pageSizeSelect" class="sort-select">
+          <option value="25">25개</option>
+          <option value="50">50개</option>
+          <option value="100">100개</option>
+          <option value="999">전체</option>
+        </select>
+      </div>
+    </div>
+
+    <p class="result-count" id="resultCount"></p>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrapper" id="tableWrapper">
+    <table class="proj-table" id="projTable">
+      <thead>
+        <tr>
+          <th class="col-no">#</th>
+          <th class="col-name sortable" data-col="projectName">
+            프로젝트명 <span class="sort-arrow">↕</span>
+          </th>
+          <th class="col-country sortable" data-col="country">
+            국가 <span class="sort-arrow">↕</span>
+          </th>
+          <th class="col-type sortable" data-col="businessType">
+            사업유형 <span class="sort-arrow">↕</span>
+          </th>
+          <th class="col-part sortable" data-col="participants">
+            사업 참여사 <span class="sort-arrow">↕</span>
+          </th>
+          <th class="col-cap sortable" data-col="capacity">
+            용량 <span class="sort-arrow">↕</span>
+          </th>
+          <th class="col-action">AI 분석</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+    <!-- Empty search -->
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon-wrap">🔍</div>
+      <h3 class="empty-title">검색 결과가 없습니다</h3>
+      <p class="empty-desc">다른 검색어나 필터를 시도해보세요.</p>
+      <button class="btn-goto-search" onclick="clearAllFilters()">필터 초기화</button>
+    </div>
+  </div>
+
+  <!-- PAGINATION -->
+  <div class="pagination hidden" id="pagination"></div>
+
+</div>
+
+<script>
+'use strict';
+
+const $ = id => document.getElementById(id);
+
+// ── State ──────────────────────────────────────────────────────
+let masterList   = [];   // Active project list (initial or updated)
+let fuseInst     = null;
+let currentQuery = '';
+let currentType  = '';
+let sortCol      = 'projectName';
+let sortDir      = 'asc';   // 'asc' | 'desc'
+let currentPage  = 1;
+let pageSize     = 25;
+
+// ── Helpers ────────────────────────────────────────────────────
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escRegex(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+const TYPE_LABEL = {
+  'Offshore Wind':'해상풍력','Onshore Wind':'육상풍력','Solar PV':'태양광',
+  'BESS':'ESS/BESS','Hydro':'수력','Hybrid (Solar+BESS)':'복합(태양광+ESS)',
+  'Hybrid (Wind+BESS)':'복합(풍력+ESS)','Other':'기타'
+};
+
+// ── Data source ────────────────────────────────────────────────
+function getMasterList() {
+  // Prefer localStorage updated data, fall back to static initial data
+  const stored = localStorage.getItem('energy_intel_master_list');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  return window.INITIAL_PROJECTS ? [...window.INITIAL_PROJECTS] : [];
+}
+
+function getUpdatedAt() {
+  const ts = localStorage.getItem('energy_intel_master_updated_at');
+  return ts ? ts.split('T')[0] : null;
+}
+
+// ── Fuse.js ────────────────────────────────────────────────────
+const FUSE_OPTS_TABLE = {
+  threshold: 0.35,
+  ignoreLocation: true,
+  includeScore: true,
+  includeMatches: true,
+  minMatchCharLength: 2,
+  keys: [
+    { name: 'projectName',  weight: 4 },
+    { name: 'participants', weight: 2 },
+    { name: 'country',      weight: 1.5 },
+    { name: 'businessType', weight: 1 },
+    { name: 'capacity',     weight: 0.5 },
+  ],
+};
+
+function buildFuse() {
+  fuseInst = new Fuse(masterList, FUSE_OPTS_TABLE);
+}
+
+// ── Main render ────────────────────────────────────────────────
+function render() {
+  let results;
+
+  if (currentQuery) {
+    const raw = fuseInst.search(currentQuery);
+    results = raw.map(r => ({ item: r.item, matches: r.matches || [] }));
+  } else {
+    results = masterList.map(item => ({ item, matches: [] }));
+  }
+
+  // Type filter
+  if (currentType) {
+    results = results.filter(r => r.item.businessType === currentType);
+  }
+
+  // Sort (when no query or explicit sort)
+  if (!currentQuery || sortCol !== 'projectName') {
+    results.sort((a, b) => {
+      const av = (a.item[sortCol] || '').toLowerCase();
+      const bv = (b.item[sortCol] || '').toLowerCase();
+      const cmp = av.localeCompare(bv, 'ko');
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+  }
+
+  const total = results.length;
+  const ps = parseInt($('pageSizeSelect').value, 10);
+  const totalPages = Math.max(1, Math.ceil(total / ps));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = (currentPage - 1) * ps;
+  const pageItems = results.slice(start, start + ps);
+
+  // Count
+  $('resultCount').textContent = currentQuery
+    ? `전체 ${masterList.length}개 중 ${total}개 결과`
+    : `총 ${total}개 프로젝트 (${start + 1}–${Math.min(start + ps, total)}번째 표시)`;
+
+  if (total === 0) {
+    $('emptyState').classList.remove('hidden');
+    $('tableWrapper').querySelector('table').classList.add('hidden');
+    $('pagination').classList.add('hidden');
+    return;
+  }
+  $('emptyState').classList.add('hidden');
+  $('tableWrapper').querySelector('table').classList.remove('hidden');
+
+  renderRows(pageItems, start);
+  renderPagination(currentPage, totalPages);
+}
+
+// ── Table rows ─────────────────────────────────────────────────
+function renderRows(items, startIdx) {
+  const tbody = $('tableBody');
+  tbody.innerHTML = '';
+  items.forEach(({ item, matches }, i) => {
+    const tr = document.createElement('tr');
+    const name  = highlightFuse(item.projectName  || '', currentQuery, matches, 'projectName');
+    const part  = highlightFuse(item.participants  || '', currentQuery, matches, 'participants');
+    const cntry = highlightFuse(item.country       || '', currentQuery, matches, 'country');
+    const cap   = highlightFuse(item.capacity      || '', currentQuery, matches, 'capacity');
+    const typeLabel = TYPE_LABEL[item.businessType] || item.businessType || '';
+    const typeClass = typeChipClass(item.businessType);
+
+    tr.innerHTML = `
+      <td class="col-no">${startIdx + i + 1}</td>
+      <td class="col-name"><span class="row-name">${name}</span></td>
+      <td class="col-country">${cntry}</td>
+      <td class="col-type"><span class="type-badge ${typeClass}">${escHtml(typeLabel)}</span></td>
+      <td class="col-part"><span class="part-text">${part}</span></td>
+      <td class="col-cap"><span class="cap-text">${cap}</span></td>
+      <td class="col-action">
+        <button class="btn-ai-analyze" onclick="analyzeProject('${escHtml(item.id)}')">🔍 분석</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function typeChipClass(type) {
+  const map = {
+    'Offshore Wind':'tbadge-ow','Onshore Wind':'tbadge-iw','Solar PV':'tbadge-sp',
+    'BESS':'tbadge-bs','Hydro':'tbadge-hy',
+    'Hybrid (Solar+BESS)':'tbadge-hy2','Hybrid (Wind+BESS)':'tbadge-hy2','Other':'tbadge-ot',
+  };
+  return map[type] || 'tbadge-ot';
+}
+
+// ── Navigate to search with prefill ───────────────────────────
+function analyzeProject(id) {
+  window.location.href = `index.html?prefill=${encodeURIComponent(id)}&from=list`;
+}
+
+// ── Highlight ──────────────────────────────────────────────────
+function highlightFuse(text, query, matches, key) {
+  if (!text) return '';
+  if (!query) return escHtml(text);
+  const fm = (matches || []).find(m => m.key === key);
+  if (!fm?.indices?.length) return highlightSimple(text, query);
+  const sorted = [...fm.indices].sort((a, b) => a[0] - b[0]);
+  let out = ''; let last = 0;
+  sorted.forEach(([s, e]) => {
+    out += escHtml(text.slice(last, s));
+    out += `<mark>${escHtml(text.slice(s, e + 1))}</mark>`;
+    last = e + 1;
+  });
+  return out + escHtml(text.slice(last));
+}
+function highlightSimple(text, query) {
+  if (!query || !text) return escHtml(text || '');
+  return escHtml(text).replace(new RegExp(`(${escRegex(query)})`, 'gi'), '<mark>$1</mark>');
+}
+
+// ── Sorting ────────────────────────────────────────────────────
+function updateSortHeaders() {
+  document.querySelectorAll('th.sortable').forEach(th => {
+    const col = th.dataset.col;
+    const arrow = th.querySelector('.sort-arrow');
+    th.classList.remove('sort-asc','sort-desc');
+    if (col === sortCol) {
+      th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+      arrow.textContent = sortDir === 'asc' ? '↑' : '↓';
+    } else {
+      arrow.textContent = '↕';
+    }
+  });
+}
+
+document.querySelectorAll('th.sortable').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      sortCol = col; sortDir = 'asc';
+    }
+    currentPage = 1;
+    updateSortHeaders();
+    render();
+  });
+});
+
+// ── Pagination ─────────────────────────────────────────────────
+function renderPagination(page, totalPages) {
+  const el = $('pagination');
+  if (totalPages <= 1) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  el.innerHTML = '';
+
+  const mk = (label, fn, disabled, active) => {
+    const b = document.createElement('button');
+    b.className = 'page-btn' + (active ? ' page-btn-active' : '');
+    b.textContent = label; b.disabled = disabled;
+    b.addEventListener('click', () => { fn(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    el.appendChild(b);
+  };
+
+  mk('← 이전', () => { currentPage--; render(); }, page <= 1, false);
+  const maxV = 7;
+  let s = Math.max(1, page - Math.floor(maxV / 2));
+  let e = Math.min(totalPages, s + maxV - 1);
+  if (e - s < maxV - 1) s = Math.max(1, e - maxV + 1);
+  for (let i = s; i <= e; i++) {
+    const _i = i;
+    mk(i, () => { currentPage = _i; render(); }, false, i === page);
+  }
+  mk('다음 →', () => { currentPage++; render(); }, page >= totalPages, false);
+}
+
+// ── Filter / Search events ─────────────────────────────────────
+$('listSearch').addEventListener('input', () => {
+  currentQuery = $('listSearch').value.trim();
+  $('clearSearch').classList.toggle('hidden', !currentQuery);
+  currentPage = 1; render();
+});
+
+$('clearSearch').addEventListener('click', () => {
+  $('listSearch').value = ''; currentQuery = '';
+  $('clearSearch').classList.add('hidden');
+  currentPage = 1; render();
+});
+
+$('pageSizeSelect').addEventListener('change', () => { currentPage = 1; render(); });
+
+document.querySelectorAll('[data-filter-type]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('[data-filter-type]').forEach(c => c.classList.remove('chip-active'));
+    chip.classList.add('chip-active');
+    currentType = chip.dataset.filterType;
+    currentPage = 1; render();
+  });
+});
+
+function clearAllFilters() {
+  $('listSearch').value = ''; currentQuery = '';
+  $('clearSearch').classList.add('hidden');
+  currentType = '';
+  document.querySelectorAll('[data-filter-type]').forEach(c => c.classList.remove('chip-active'));
+  document.querySelector('[data-filter-type=""]').classList.add('chip-active');
+  currentPage = 1; render();
+}
+
+// ── Update modal ───────────────────────────────────────────────
+function openModal() { $('updateModal').classList.remove('hidden'); }
+function closeModal() { $('updateModal').classList.add('hidden'); }
+
+async function startUpdate() {
+  closeModal();
+  $('updateLoadingOverlay').classList.remove('hidden');
+  $('btnUpdateData').disabled = true;
+
+  try {
+    const res = await fetch('/api/update-list', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || `서버 오류 (${res.status})`);
+    if (!Array.isArray(result.projects) || result.projects.length === 0) {
+      throw new Error('업데이트된 데이터를 받지 못했습니다.');
+    }
+
+    localStorage.setItem('energy_intel_master_list', JSON.stringify(result.projects));
+    localStorage.setItem('energy_intel_master_updated_at', result.updatedAt || new Date().toISOString());
+
+    $('updateLoadingOverlay').classList.add('hidden');
+    alert(`✅ 업데이트 완료!\n${result.projects.length}개 프로젝트가 로드되었습니다.`);
+
+    // Reload
+    masterList = getMasterList();
+    buildFuse();
+    updateSubtitle();
+    render();
+
+  } catch (err) {
+    $('updateLoadingOverlay').classList.add('hidden');
+    alert(`❌ 업데이트 실패\n${err.message}`);
+  } finally {
+    $('btnUpdateData').disabled = false;
+  }
+}
+
+// ── Subtitle ───────────────────────────────────────────────────
+function updateSubtitle() {
+  const updatedAt = getUpdatedAt();
+  const sub = $('listSubtitle');
+  if (updatedAt) {
+    sub.textContent = `마지막 AI 업데이트: ${updatedAt} · ${masterList.length}개 프로젝트`;
+    sub.style.color = 'var(--green)';
+  } else {
+    sub.textContent = `초기 데이터 · ${masterList.length}개 프로젝트`;
+    sub.style.color = 'var(--gray-400)';
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────
+masterList = getMasterList();
+buildFuse();
+updateSubtitle();
+updateSortHeaders();
+render();
+</script>
+
+</body>
+</html>

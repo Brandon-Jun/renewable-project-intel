@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Energy Project Intelligence</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <script src="projects.js"></script>
+  <script src="initial-projects.js"></script>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────── -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="index.html" class="logo">
+      <span class="logo-icon">⚡</span>
+      <span class="logo-text">Energy<strong>Intel</strong></span>
+    </a>
+    <nav class="header-nav">
+      <a href="list.html" class="nav-link">프로젝트 목록</a>
+      <a href="index.html" class="nav-link nav-active">새 검색</a>
+    </nav>
+    <a href="list.html" class="btn-header-new">📂 프로젝트 목록 보기</a>
+  </div>
+</header>
+
+<!-- ── SEARCH PANEL ───────────────────────────────────────────── -->
+<section class="search-section" id="searchSection">
+  <div class="search-card">
+    <h2 class="search-title">프로젝트 검색</h2>
+    <p class="search-desc">AI가 실시간으로 글로벌 재생에너지 프로젝트 정보를 수집합니다.</p>
+
+    <form id="searchForm" class="search-form">
+      <div class="form-row">
+        <div class="form-group required">
+          <label for="projectName">프로젝트명</label>
+          <div class="autocomplete-wrapper">
+            <input type="text" id="projectName" placeholder="예: Hornsea One, Bhadla Solar Park" required autocomplete="off" />
+            <div class="ac-dropdown hidden" id="acDropdown"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row two-col">
+        <div class="form-group required">
+          <label for="country">국가</label>
+          <select id="country" required>
+            <option value="">국가 선택</option>
+            <optgroup label="아시아-태평양">
+              <option value="South Korea">한국</option>
+              <option value="Japan">일본</option>
+              <option value="China">중국</option>
+              <option value="Taiwan">대만</option>
+              <option value="Australia">호주</option>
+              <option value="Vietnam">베트남</option>
+              <option value="Philippines">필리핀</option>
+              <option value="Indonesia">인도네시아</option>
+              <option value="India">인도</option>
+            </optgroup>
+            <optgroup label="유럽">
+              <option value="United Kingdom">영국</option>
+              <option value="Germany">독일</option>
+              <option value="France">프랑스</option>
+              <option value="Spain">스페인</option>
+              <option value="Italy">이탈리아</option>
+              <option value="Netherlands">네덜란드</option>
+              <option value="Denmark">덴마크</option>
+              <option value="Norway">노르웨이</option>
+            </optgroup>
+            <optgroup label="아메리카">
+              <option value="United States">미국</option>
+              <option value="Canada">캐나다</option>
+              <option value="Brazil">브라질</option>
+              <option value="Chile">칠레</option>
+              <option value="Mexico">멕시코</option>
+            </optgroup>
+            <optgroup label="중동·아프리카">
+              <option value="Saudi Arabia">사우디아라비아</option>
+              <option value="UAE">UAE</option>
+              <option value="South Africa">남아프리카</option>
+              <option value="Morocco">모로코</option>
+            </optgroup>
+            <option value="Other">기타</option>
+          </select>
+        </div>
+
+        <div class="form-group required">
+          <label for="businessType">사업유형</label>
+          <select id="businessType" required>
+            <option value="">유형 선택</option>
+            <option value="Offshore Wind">해상풍력</option>
+            <option value="Onshore Wind">육상풍력</option>
+            <option value="Solar PV">태양광 (Solar PV)</option>
+            <option value="BESS">에너지저장장치 (BESS)</option>
+            <option value="Hydro">수력</option>
+            <option value="Hybrid (Solar+BESS)">복합 (태양광+ESS)</option>
+            <option value="Hybrid (Wind+BESS)">복합 (풍력+ESS)</option>
+            <option value="Other">기타</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row two-col optional-row">
+        <div class="form-group">
+          <label for="participants">사업 참여사 <span class="optional-tag">선택</span></label>
+          <input type="text" id="participants" placeholder="예: Ørsted, KEPCO, 삼성물산" />
+        </div>
+        <div class="form-group">
+          <label for="capacity">용량 <span class="optional-tag">선택</span></label>
+          <input type="text" id="capacity" placeholder="예: 1.2 GW, 500 MW" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn-search" id="searchBtn">
+        <span class="btn-icon">🔍</span>
+        <span class="btn-text">AI 검색 시작</span>
+      </button>
+    </form>
+  </div>
+</section>
+
+<!-- ── LOADING ─────────────────────────────────────────────────── -->
+<section class="loading-section hidden" id="loadingSection">
+  <div class="loading-card">
+    <div class="spinner"></div>
+    <p class="loading-title">AI가 프로젝트 정보를 수집 중입니다</p>
+    <div class="loading-steps" id="loadingSteps">
+      <div class="loading-step active" id="step1">🌐 웹 검색 중...</div>
+      <div class="loading-step" id="step2">📊 데이터 분석 중...</div>
+      <div class="loading-step" id="step3">📝 리포트 생성 중...</div>
+    </div>
+    <p class="loading-note">최대 30~60초 소요될 수 있습니다</p>
+  </div>
+</section>
+
+<!-- ── ERROR ───────────────────────────────────────────────────── -->
+<section class="error-section hidden" id="errorSection">
+  <div class="error-card">
+    <span class="error-icon">⚠️</span>
+    <h3>검색 중 오류가 발생했습니다</h3>
+    <p id="errorMessage"></p>
+    <button class="btn-retry" onclick="resetToSearch()">다시 검색</button>
+  </div>
+</section>
+
+<!-- ── DASHBOARD ───────────────────────────────────────────────── -->
+<main class="dashboard hidden" id="dashboard">
+
+  <!-- Top bar -->
+  <div class="dashboard-topbar">
+    <button class="btn-back" onclick="resetToSearch()">← 새 검색</button>
+    <div class="dash-meta">
+      <span class="dash-searchdate" id="dashSearchDate"></span>
+      <span class="confidence-badge" id="confidenceBadge"></span>
+    </div>
+  </div>
+
+  <!-- ── ROW 1: Overview ───────────────────────────────────────── -->
+  <div class="dash-row">
+    <div class="dash-card card-overview">
+      <div class="overview-top">
+        <div>
+          <h1 class="proj-name" id="projName">—</h1>
+          <p class="proj-altnames" id="projAltNames"></p>
+          <div class="proj-tags">
+            <span class="tag tag-type" id="tagType"></span>
+            <span class="tag tag-phase" id="tagPhase"></span>
+            <span class="tag tag-country" id="tagCountry"></span>
+          </div>
+        </div>
+        <div class="overview-metrics">
+          <div class="metric-box">
+            <span class="metric-label">용량</span>
+            <span class="metric-value" id="metCapacity">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">사업단계</span>
+            <span class="metric-value" id="metPhase">—</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-label">예상 COD</span>
+            <span class="metric-value" id="metCOD">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="overview-status" id="overviewStatus"></div>
+    </div>
+
+    <div class="dash-card card-location">
+      <div class="card-header">
+        <h3 class="card-title">📍 위치</h3>
+        <a class="map-link" id="mapLink" href="#" target="_blank" rel="noopener">Google Maps에서 보기 →</a>
+      </div>
+      <div class="location-info">
+        <p class="location-address" id="locationAddress">—</p>
+        <p class="location-coords" id="locationCoords"></p>
+        <p class="site-size" id="siteSize"></p>
+      </div>
+      <iframe class="map-embed" id="mapEmbed" src="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- ── ROW 2: Stakeholders ──────────────────────────────────── -->
+  <div class="dash-row">
+    <div class="dash-card card-stakeholders">
+      <div class="card-header">
+        <h3 class="card-title">🏢 사업 참여사</h3>
+      </div>
+      <div class="stakeholder-grid" id="stakeholderGrid"></div>
+    </div>
+  </div>
+
+  <!-- ── ROW 3: Financials + Grid + PPA ──────────────────────── -->
+  <div class="dash-row three-col">
+    <div class="dash-card card-financials">
+      <div class="card-header">
+        <h3 class="card-title">💰 재무 지표</h3>
+      </div>
+      <div class="fin-grid">
+        <div class="fin-item">
+          <span class="fin-label">총 투자규모</span>
+          <span class="fin-val" id="finInvestment">—</span>
+        </div>
+        <div class="fin-item">
+          <span class="fin-label">IRR</span>
+          <span class="fin-val" id="finIRR">—</span>
+        </div>
+        <div class="fin-item">
+          <span class="fin-label">예상 발전량</span>
+          <span class="fin-val" id="finGeneration">—</span>
+        </div>
+        <div class="fin-item">
+          <span class="fin-label">부지 면적</span>
+          <span class="fin-val" id="finSiteSize">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash-card card-grid">
+      <div class="card-header">
+        <h3 class="card-title">🔌 계통 연계</h3>
+      </div>
+      <div class="grid-info" id="gridInfo"></div>
+    </div>
+
+    <div class="dash-card card-ppa">
+      <div class="card-header">
+        <h3 class="card-title">📄 전력 판매</h3>
+      </div>
+      <div class="ppa-info" id="ppaInfo"></div>
+    </div>
+  </div>
+
+  <!-- ── ROW 4: News ──────────────────────────────────────────── -->
+  <div class="dash-row">
+    <div class="dash-card card-news">
+      <div class="card-header">
+        <h3 class="card-title">📰 최근 뉴스 / 이슈</h3>
+      </div>
+      <div class="news-list" id="newsList"></div>
+    </div>
+  </div>
+
+  <!-- Sources -->
+  <div class="sources-row" id="sourcesRow"></div>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

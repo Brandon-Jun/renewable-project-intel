@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/search.js": {
+      "maxDuration": 60
+    },
+    "api/update-list.js": {
+      "maxDuration": 60
+    }
+  }
+}
