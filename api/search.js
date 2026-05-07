@@ -15,7 +15,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '필수 입력값이 없습니다 (프로젝트명, 국가, 사업유형)' });
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    defaultHeaders: { 'anthropic-beta': 'web-search-2025-03-05' },
+  });
 
   const systemPrompt = `You are a senior renewable energy project intelligence analyst specializing in global energy markets.
 Search for comprehensive, accurate information about the specified energy project.

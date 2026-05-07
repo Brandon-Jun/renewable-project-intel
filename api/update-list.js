@@ -9,7 +9,10 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    defaultHeaders: { 'anthropic-beta': 'web-search-2025-03-05' },
+  });
 
   const systemPrompt = `You are a renewable energy market intelligence analyst.
 Compile an updated, comprehensive list of major global renewable energy projects.
