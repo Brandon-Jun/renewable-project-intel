@@ -15,6 +15,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: '필수 입력값이 없습니다 (프로젝트명, 국가, 사업유형)' });
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(500).json({ error: 'ANTHROPIC_API_KEY 환경변수가 설정되지 않았습니다.' });
+  }
+
   const client = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY,
     defaultHeaders: { 'anthropic-beta': 'web-search-2025-03-05' },
